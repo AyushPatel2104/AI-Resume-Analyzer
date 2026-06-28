@@ -4,7 +4,7 @@ type DashboardLayoutProps = {
   children: ReactNode;
 };
 
-/** Route-group shell for authenticated dashboard pages. */
+/** Route shell for dashboard pages. */
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return <>{children}</>;
 }
