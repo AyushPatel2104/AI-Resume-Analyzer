@@ -14,6 +14,9 @@ COPY app ./app
 COPY migrations ./migrations
 COPY alembic.ini .
 
+RUN mkdir -p /app/data/uploads \
+    && chown -R appuser:appuser /app/data
+
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
