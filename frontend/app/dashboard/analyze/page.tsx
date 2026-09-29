@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { DashboardHeader, DashboardHeaderAction } from "@/components/dashboard/DashboardHeader";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { Sidebar } from "@/components/dashboard/Sidebar";
@@ -10,11 +12,11 @@ export default function AnalyzePage() {
       header={
         <DashboardHeader
           actions={
-            <DashboardHeaderAction href="/dashboard" variant="secondary">
-              Back to overview
+            <DashboardHeaderAction href="/dashboard/resumes" variant="secondary">
+              Manage resumes
             </DashboardHeaderAction>
           }
-          description="Upload a resume and paste a job description to generate an explainable match report."
+          description="Select a saved resume and a saved job to generate an explainable match report."
           eyebrow="Analyze"
           title="Resume & job match analysis"
         />
@@ -22,10 +24,12 @@ export default function AnalyzePage() {
       sidebar={<Sidebar activePath="/dashboard/analyze" />}
     >
       <ContentCard
-        description="Supported formats: PDF and DOCX (max 5 MB). Analysis runs on the API — start the backend on port 8000."
+        description="Uses your Resume Library and Job Library — add items under Resumes or Jobs first."
         title="New analysis"
       >
-        <AnalyzeForm />
+        <Suspense fallback={null}>
+          <AnalyzeForm />
+        </Suspense>
       </ContentCard>
     </DashboardShell>
   );

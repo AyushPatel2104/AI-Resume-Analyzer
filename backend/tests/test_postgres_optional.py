@@ -15,7 +15,11 @@ def test_postgres_connect_and_create_tables():
     with engine.connect() as conn:
         assert conn.execute(text("SELECT 1")).scalar() == 1
 
-    from app.database import Base
-    from app import models  # noqa: F401
+    from pathlib import Path
 
-    Base.metadata.create_all(bind=engine)
+    from alembic import command
+    from alembic.config import Config
+
+    cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    cfg.set_main_option("sqlalchemy.url", url)
+    command.upgrade(cfg, "head")

@@ -6,17 +6,35 @@ import { radius } from "@/constants/radius";
 import { spacing } from "@/constants/spacing";
 import { textStyles } from "@/constants/typography";
 import { zIndex } from "@/constants/zIndex";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import { cn } from "@/lib/utils";
 
 type SidebarNavigationItem = {
   label: string;
   href: string;
+  match: (path: string) => boolean;
 };
 
 const navigationItems: SidebarNavigationItem[] = [
-  { label: "Overview", href: "/dashboard" },
-  { label: "New analysis", href: "/dashboard/analyze" },
-  { label: "Analyses", href: "/dashboard" },
+  { label: "Dashboard", href: "/dashboard", match: (path) => path === "/dashboard" },
+  { label: "Resumes", href: "/dashboard/resumes", match: (path) => path.startsWith("/dashboard/resumes") },
+  { label: "Jobs", href: "/dashboard/jobs", match: (path) => path.startsWith("/dashboard/jobs") },
+  {
+    label: "Applications",
+    href: "/dashboard/applications",
+    match: (path) => path.startsWith("/dashboard/applications"),
+  },
+  {
+    label: "Analyses",
+    href: "/dashboard/analyses",
+    match: (path) => path.startsWith("/dashboard/analyses") || path.startsWith("/dashboard/results"),
+  },
+  {
+    label: "Career Assistant",
+    href: "/dashboard/career-assistant",
+    match: (path) => path.startsWith("/dashboard/career-assistant"),
+  },
+  { label: "Settings", href: "/dashboard/settings", match: (path) => path.startsWith("/dashboard/settings") },
 ];
 
 export function Sidebar({ activePath = "/dashboard" }: { activePath?: string }) {
@@ -70,14 +88,7 @@ export function Sidebar({ activePath = "/dashboard" }: { activePath?: string }) 
         <nav aria-label="Dashboard navigation">
           <ul className="flex flex-col" style={{ gap: spacing[1] }}>
             {navigationItems.map((item) => {
-              const isActive =
-                item.label === "Overview"
-                  ? activePath === "/dashboard"
-                  : item.label === "New analysis"
-                    ? activePath.startsWith("/dashboard/analyze")
-                    : item.label === "Analyses"
-                      ? activePath.startsWith("/dashboard/results")
-                      : activePath === item.href;
+              const isActive = item.match(activePath);
               return (
                 <li key={item.label}>
                   <SidebarLink href={item.href} isActive={isActive}>
@@ -88,6 +99,12 @@ export function Sidebar({ activePath = "/dashboard" }: { activePath?: string }) 
             })}
           </ul>
         </nav>
+
+        <div style={{ marginTop: spacing[2] }}>
+          <SidebarLink href="/dashboard/analyze" isActive={activePath.startsWith("/dashboard/analyze")}>
+            New analysis
+          </SidebarLink>
+        </div>
 
         <section
           aria-labelledby="workspace-summary-title"
@@ -118,8 +135,11 @@ export function Sidebar({ activePath = "/dashboard" }: { activePath?: string }) 
               lineHeight: textStyles.caption.lineHeight,
             }}
           >
-            Analyses are stored locally in your configured database when the API is running.
+            Resumes and analyses are private to your account.
           </p>
+          <div style={{ marginTop: spacing[3] }}>
+            <LogoutButton />
+          </div>
         </section>
       </div>
     </aside>

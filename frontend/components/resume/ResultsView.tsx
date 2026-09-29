@@ -4,14 +4,12 @@ import { colors } from "@/constants/colors";
 import { radius } from "@/constants/radius";
 import { spacing } from "@/constants/spacing";
 import { textStyles } from "@/constants/typography";
-import type { AnalysisDetail } from "@/types/api";
+import type { AnalysisDetail, MatchComponents, SkillGapItem } from "@/types/api";
 
 function SkillPills({ items, tone }: { items: string[]; tone: "match" | "gap" }) {
   if (items.length === 0) {
     return (
-      <p style={{ color: colors.surface.foregroundMuted, fontSize: textStyles.bodySmall.fontSize }}>
-        None detected
-      </p>
+      <p style={{ color: colors.surface.foregroundMuted, fontSize: textStyles.bodySmall.fontSize }}>None detected</p>
     );
   }
 
@@ -58,40 +56,119 @@ function BulletList({ items }: { items: string[] }) {
   );
 }
 
+function ComponentRow({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4" style={{ paddingBlock: spacing[2] }}>
+      <div>
+        <p style={{ fontWeight: 600, fontSize: textStyles.bodySmall.fontSize }}>{label}</p>
+        {hint ? (
+          <p style={{ color: colors.surface.foregroundMuted, fontSize: textStyles.caption.fontSize }}>{hint}</p>
+        ) : null}
+      </div>
+      <span style={{ color: colors.brand.accent, fontWeight: 700 }}>{value}</span>
+    </div>
+  );
+}
+
+function formatComponent(components: MatchComponents, key: keyof MatchComponents, availableKey?: keyof MatchComponents) {
+  if (availableKey && components[availableKey] === false) {
+    return "N/A";
+  }
+  const value = components[key];
+  if (value === null || value === undefined) return "N/A";
+  if (typeof value === "number") return `${Math.round(value)}%`;
+  return String(value);
+}
+
+function GapList({ gaps }: { gaps: SkillGapItem[] }) {
+  const groups = {
+    critical: gaps.filter((g) => g.severity === "critical"),
+    important: gaps.filter((g) => g.severity === "important"),
+    optional: gaps.filter((g) => g.severity === "optional"),
+  };
+  return (
+    <div className="flex flex-col" style={{ gap: spacing[4] }}>
+      {(["critical", "important", "optional"] as const).map((severity) => (
+        <div key={severity}>
+          <h4 style={{ fontSize: textStyles.label.fontSize, fontWeight: 600, textTransform: "capitalize" }}>{severity}</h4>
+          {groups[severity].length === 0 ? (
+            <p style={{ color: colors.surface.foregroundMuted, fontSize: textStyles.caption.fontSize }}>None</p>
+          ) : (
+            <ul className="flex flex-col" style={{ gap: spacing[2], marginTop: spacing[2] }}>
+              {groups[severity].map((gap) => (
+                <li key={`${gap.item}-${gap.detail}`} style={{ fontSize: textStyles.bodySmall.fontSize }}>
+                  <strong>{gap.item}</strong> — {gap.detail}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function ResultsView({ data }: { data: AnalysisDetail }) {
-  const { profile, match, filename } = data;
+  const { match, filename } = data;
+  const components = match.components;
+  const semanticHint =
+    components?.semantic_available && components.semantic_method === "sentence_transformer"
+      ? "Local embedding model"
+      : "TF-IDF text similarity (fallback — not deep semantic AI)";
 
   return (
     <>
       <section aria-label="Match metrics" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          description="Weighted skill coverage and semantic similarity"
+          description={match.score_disclaimer || "Explainable compatibility score — not hiring probability"}
           label="Overall match"
           value={`${Math.round(match.overall_score)}%`}
         />
-        <StatCard
-          description="TF-IDF cosine similarity vs. job description"
-          label="Semantic alignment"
-          value={`${Math.round(match.semantic_similarity)}%`}
-        />
-        <StatCard
-          description="Skills from JD found on resume"
-          label="Skill coverage"
-          value={`${Math.round(match.skill_coverage)}%`}
-        />
-        <StatCard
-          description="Parsed from uploaded file"
-          label="Resume file"
-          value={filename.length > 18 ? `${filename.slice(0, 15)}…` : filename}
-        />
+        <StatCard description={semanticHint} label="Semantic / text relevance" value={`${Math.round(match.semantic_similarity)}%`} />
+        <StatCard description="Required skill coverage" label="Required coverage" value={`${Math.round(match.skill_coverage)}%`} />
+        <StatCard description="Parsed from uploaded file" label="Resume file" value={filename.length > 18 ? `${filename.slice(0, 15)}…` : filename} />
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ContentCard description="Skills aligned with the job description" title="Matched skills">
-          <SkillPills items={match.matched_skills} tone="match" />
+      {components ? (
+        <ContentCard description="Component signals (V2 matcher)" title="Score breakdown">
+          <ComponentRow label="Skills" value={formatComponent(components, "skill_score")} />
+          <ComponentRow
+            hint={components.semantic_available ? "Sentence-transformer embeddings" : "Semantic signal unavailable"}
+            label="Semantic"
+            value={formatComponent(components, "semantic_score", "semantic_available")}
+          />
+          {!components.semantic_available ? (
+            <ComponentRow label="Text similarity (TF-IDF)" value={formatComponent(components, "text_similarity_score")} />
+          ) : null}
+          <ComponentRow label="Experience" value={formatComponent(components, "experience_score", "experience_available")} />
+          <ComponentRow
+            hint={components.education_requirement_specified ? undefined : "No explicit education requirement in job"}
+            label="Education"
+            value={formatComponent(components, "education_score", "education_available")}
+          />
+          <ComponentRow label="Projects" value={formatComponent(components, "project_score")} />
+          <ComponentRow label="Seniority" value={formatComponent(components, "seniority_score", "seniority_available")} />
+          <ComponentRow label="Required requirements" value={formatComponent(components, "required_coverage")} />
+          <ComponentRow label="Preferred requirements" value={formatComponent(components, "preferred_coverage")} />
+          <ComponentRow label="Keyword / technology" value={formatComponent(components, "keyword_score")} />
         </ContentCard>
-        <ContentCard description="Job requirements not clearly present on the resume" title="Missing skills">
-          <SkillPills items={match.missing_skills} tone="gap" />
+      ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ContentCard title="Required skills — matched">
+          <SkillPills items={match.matched_required_skills ?? match.matched_skills} tone="match" />
+        </ContentCard>
+        <ContentCard title="Required skills — missing">
+          <SkillPills items={match.missing_required_skills ?? match.missing_skills} tone="gap" />
+        </ContentCard>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ContentCard title="Preferred skills — matched">
+          <SkillPills items={match.matched_preferred_skills ?? []} tone="match" />
+        </ContentCard>
+        <ContentCard title="Preferred skills — missing">
+          <SkillPills items={match.missing_preferred_skills ?? []} tone="gap" />
         </ContentCard>
       </div>
 
@@ -104,67 +181,37 @@ export function ResultsView({ data }: { data: AnalysisDetail }) {
         </ContentCard>
       </div>
 
+      {match.skill_gaps && match.skill_gaps.length > 0 ? (
+        <ContentCard title="Skill gap severity">
+          <GapList gaps={match.skill_gaps} />
+        </ContentCard>
+      ) : null}
+
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <ContentCard description="Experience lines relevant to the role" title="Relevant experience">
+        <ContentCard description="Experience lines with job relevance" title="Relevant experience">
           <BulletList items={match.relevant_experience.length ? match.relevant_experience : ["No structured experience blocks detected."]} />
         </ContentCard>
-        <ContentCard description="Actionable next steps" title="Recommendations">
-          <ol className="flex flex-col" style={{ gap: spacing[3] }}>
-            {match.recommendations.map((rec, index) => (
-              <li
-                key={rec}
-                style={{
-                  color: colors.surface.foregroundMuted,
-                  fontSize: textStyles.bodySmall.fontSize,
-                  lineHeight: textStyles.bodySmall.lineHeight,
-                }}
-              >
-                <span style={{ color: colors.brand.accent, fontWeight: 600 }}>{index + 1}. </span>
-                {rec}
-              </li>
-            ))}
-          </ol>
+        <ContentCard description="Project evidence" title="Relevant projects">
+          <BulletList items={match.relevant_projects?.length ? match.relevant_projects : ["No project relevance detected."]} />
         </ContentCard>
       </div>
 
-      <ContentCard
-        description="Structured fields extracted from your resume (heuristic parsing)"
-        title={profile.name ? `${profile.name} — parsed profile` : "Parsed profile"}
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <h3 style={{ ...textStyles.label, color: colors.surface.foreground, marginBottom: spacing[2] }}>
-              Contact
-            </h3>
-            <ul style={{ color: colors.surface.foregroundMuted, fontSize: textStyles.bodySmall.fontSize }}>
-              {profile.contact.email ? <li>{profile.contact.email}</li> : null}
-              {profile.contact.phone ? <li>{profile.contact.phone}</li> : null}
-              {profile.contact.linkedin ? <li>{profile.contact.linkedin}</li> : null}
-              {!profile.contact.email && !profile.contact.phone && !profile.contact.linkedin ? (
-                <li>Not detected</li>
-              ) : null}
-            </ul>
-          </div>
-          <div>
-            <h3 style={{ ...textStyles.label, color: colors.surface.foreground, marginBottom: spacing[2] }}>
-              Top skills
-            </h3>
-            <SkillPills items={profile.skills.slice(0, 12)} tone="match" />
-          </div>
-        </div>
-        {profile.education.length > 0 ? (
-          <div style={{ marginTop: spacing[4] }}>
-            <h3 style={{ ...textStyles.label, color: colors.surface.foreground, marginBottom: spacing[2] }}>
-              Education
-            </h3>
-            <BulletList
-              items={profile.education.map((e) =>
-                [e.degree, e.institution, e.year].filter(Boolean).join(" · "),
-              )}
-            />
-          </div>
-        ) : null}
+      <ContentCard description="Actionable next steps" title="Recommendations">
+        <ol className="flex flex-col" style={{ gap: spacing[3] }}>
+          {match.recommendations.map((rec, index) => (
+            <li key={rec} style={{ color: colors.surface.foregroundMuted, fontSize: textStyles.bodySmall.fontSize }}>
+              <span style={{ color: colors.brand.accent, fontWeight: 600 }}>{index + 1}. </span>
+              {rec}
+            </li>
+          ))}
+        </ol>
       </ContentCard>
+
+      {match.partial_matches && match.partial_matches.length > 0 ? (
+        <ContentCard title="Partial matches">
+          <BulletList items={match.partial_matches} />
+        </ContentCard>
+      ) : null}
     </>
   );
 }

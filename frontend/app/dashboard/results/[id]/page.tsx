@@ -1,4 +1,6 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { DashboardHeader, DashboardHeaderAction } from "@/components/dashboard/DashboardHeader";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
@@ -8,6 +10,7 @@ import { colors } from "@/constants/colors";
 import { radius } from "@/constants/radius";
 import { spacing } from "@/constants/spacing";
 import { textStyles } from "@/constants/typography";
+import { AUTH_COOKIE_NAME } from "@/services/auth-session";
 import { fetchAnalysisById } from "@/services/api";
 
 type PageProps = {
@@ -16,12 +19,16 @@ type PageProps = {
 
 export default async function ResultsPage({ params }: PageProps) {
   const { id } = await params;
+  const accessToken = (await cookies()).get(AUTH_COOKIE_NAME)?.value;
+  if (!accessToken) {
+    redirect("/login");
+  }
 
   let error: string | null = null;
   let data = null;
 
   try {
-    data = await fetchAnalysisById(id);
+    data = await fetchAnalysisById(id, accessToken);
   } catch (err) {
     error = err instanceof Error ? err.message : "Unable to load analysis.";
   }
@@ -64,7 +71,14 @@ export default async function ResultsPage({ params }: PageProps) {
           </Link>
         </div>
       ) : (
-        <ResultsView data={data} />
+        <>
+          <ResultsView data={data} />
+          <p className="mt-6" style={{ fontSize: textStyles.bodySmall.fontSize }}>
+            <Link href={`/dashboard/applications?job=${data.job_id}&resume=${data.resume_id}`}>
+              Track this application in your pipeline
+            </Link>
+          </p>
+        </>
       )}
     </DashboardShell>
   );

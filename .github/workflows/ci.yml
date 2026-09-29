@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run tests
+        env:
+          JWT_SECRET_KEY: test-jwt-secret-key-at-least-32-chars!!
+          DEBUG: "true"
+          RATE_LIMIT_ENABLED: "false"
+        run: python -m pytest -q
+      - name: Migration roundtrip
+        env:
+          JWT_SECRET_KEY: test-jwt-secret-key-at-least-32-chars!!
+          DEBUG: "true"
+        run: python -m pytest tests/test_migrations.py -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+        run: npm run build

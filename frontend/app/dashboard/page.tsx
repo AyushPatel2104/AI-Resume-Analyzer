@@ -1,4 +1,6 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { ContentCard } from "@/components/dashboard/ContentCard";
 import {
@@ -12,16 +14,22 @@ import { colors } from "@/constants/colors";
 import { radius } from "@/constants/radius";
 import { spacing } from "@/constants/spacing";
 import { textStyles } from "@/constants/typography";
+import { AUTH_COOKIE_NAME } from "@/services/auth-session";
 import { checkApiHealth, fetchAnalysisHistory } from "@/services/api";
 
 export default async function DashboardPage() {
+  const accessToken = (await cookies()).get(AUTH_COOKIE_NAME)?.value;
+  if (!accessToken) {
+    redirect("/login");
+  }
+
   const apiOnline = await checkApiHealth();
   let history: Awaited<ReturnType<typeof fetchAnalysisHistory>> = [];
   let historyError: string | null = null;
 
   if (apiOnline) {
     try {
-      history = await fetchAnalysisHistory(8);
+      history = await fetchAnalysisHistory(8, accessToken);
     } catch (err) {
       historyError = err instanceof Error ? err.message : "Could not load history.";
     }
@@ -98,10 +106,14 @@ export default async function DashboardPage() {
           ) : history.length === 0 ? (
             <p style={{ color: colors.surface.foregroundMuted, fontSize: textStyles.bodySmall.fontSize }}>
               No analyses yet.{" "}
-              <Link href="/dashboard/analyze" style={{ color: colors.brand.accent }}>
-                Upload a resume
+              <Link href="/dashboard/resumes" style={{ color: colors.brand.accent }}>
+                Add a resume
               </Link>{" "}
-              to get started.
+              then{" "}
+              <Link href="/dashboard/analyze" style={{ color: colors.brand.accent }}>
+                run an analysis
+              </Link>
+              .
             </p>
           ) : (
             <ul className="flex flex-col" style={{ gap: spacing[3] }}>
@@ -115,16 +127,23 @@ export default async function DashboardPage() {
                     padding: spacing[4],
                   }}
                 >
-                  <Link
-                    href={`/dashboard/results/${analysis.id}`}
-                    style={{
-                      color: colors.surface.foreground,
-                      fontSize: textStyles.bodySmall.fontSize,
-                      lineHeight: textStyles.bodySmall.lineHeight,
-                    }}
-                  >
-                    {analysis.original_filename}
-                  </Link>
+                  <div>
+                    <Link
+                      href={`/dashboard/results/${analysis.id}`}
+                      style={{
+                        color: colors.surface.foreground,
+                        fontSize: textStyles.bodySmall.fontSize,
+                        lineHeight: textStyles.bodySmall.lineHeight,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {analysis.resume_name}
+                    </Link>
+                    <p style={{ color: colors.surface.foregroundMuted, fontSize: textStyles.caption.fontSize }}>
+                      {analysis.job_title}
+                      {analysis.company_name ? ` · ${analysis.company_name}` : ""}
+                    </p>
+                  </div>
                   <span
                     style={{
                       color: colors.brand.accent,
