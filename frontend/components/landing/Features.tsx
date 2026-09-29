@@ -31,6 +31,7 @@ const features = [
 export function Features() {
   return (
     <section
+      id="features"
       aria-labelledby="features-title"
       style={{
         backgroundColor: colors.surface.background,

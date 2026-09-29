@@ -9,8 +9,8 @@ import { spacing } from "@/constants/spacing";
 import { textStyles } from "@/constants/typography";
 
 const ctaActions = [
-  { label: "Start analysis", href: "#", variant: "primary" },
-  { label: "Talk to sales", href: "#", variant: "secondary" },
+  { label: "Start analysis", href: "/dashboard/analyze", variant: "primary" },
+  { label: "View dashboard", href: "/dashboard", variant: "secondary" },
 ] as const;
 
 const supportPoints = [

@@ -1,169 +1,239 @@
-# AI Resume Analyzer & Career Intelligence Platform
+# AI-Powered Resume Analyzer & Job Match System
 
-> Production-oriented platform for resume analysis, job-fit evaluation, and career insights powered by AI.
+Full-stack application that parses PDF/DOCX resumes, compares them to a job description, and returns explainable match scores, skill gaps, strengths, and recommendations.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status: In Development](https://img.shields.io/badge/Status-In%20Development-yellow.svg)]()
-
----
-
-## Project Overview
-
-The **AI Resume Analyzer & Career Intelligence Platform** is a full-stack application designed to help job seekers and career professionals understand how well their resume aligns with target roles—and what to improve next.
-
-Unlike one-off resume checkers, this platform is built as a **career intelligence system**: structured resume ingestion, explainable scoring, skill and gap analysis, and actionable recommendations grounded in job context.
-
-**Current status:** Early development. Repository scaffolding is in place; core services and UI are under active design and implementation.
+**Repository:** [github.com/AyushPatel2104/AI-Resume-Analyzer](https://github.com/AyushPatel2104/AI-Resume-Analyzer)
 
 ---
 
-## Key Features
+## Current features (implemented)
 
-The following capabilities define the **target product scope**. Items are planned unless explicitly marked as shipped in release notes.
+- Resume upload (PDF, DOCX) with size/type validation
+- Text extraction and structured profile parsing (contact, skills, education, experience, projects, certifications)
+- Job description analysis and resume–JD matching
+- Overall match score with skill coverage and TF-IDF semantic similarity breakdown
+- Matched/missing skills, strengths, weaknesses, relevant experience, recommendations
+- Analysis history persisted in SQLite (local dev) or PostgreSQL (Docker/production via `DATABASE_URL`)
+- Responsive marketing site and dashboard UI (Next.js)
+- Optional LLM-enhanced recommendations when `OPENAI_API_KEY` is configured
 
-| Area | Planned Capability |
-|------|-------------------|
-| **Resume ingestion** | Upload and parse PDF/DOCX resumes into structured profiles |
-| **ATS & structure analysis** | Evaluate formatting, sections, keywords, and parseability |
-| **Job-fit scoring** | Compare resume content against a job description or role profile |
-| **Skill intelligence** | Extract skills, map to role requirements, surface gaps |
-| **AI recommendations** | Context-aware suggestions for bullets, skills, and positioning |
-| **Career insights** | Track analyses over time and visualize improvement trends |
-| **Secure user workspace** | Authentication, saved resumes, and analysis history |
+**Not implemented:** user authentication, multi-tenant workspaces, OCR for scanned PDFs, or a hosted live demo (deploy when ready).
 
-> **Note:** Feature availability will be tracked per milestone in the [Development Roadmap](#development-roadmap).
+**Match scores** are explainable, request-specific signals — not a published accuracy benchmark. The marketing landing page uses **illustrative UI only** for preview widgets.
 
 ---
 
-## Tech Stack
+## Architecture
 
-**Planned stack** (subject to refinement during implementation):
+```
+┌──────────────┐     REST (CORS)      ┌─────────────────────────────────┐
+│  Next.js UI  │ ◄──────────────────► │  FastAPI backend                │
+│  :3000       │                      │  :8000                          │
+└──────────────┘                      │  parse → extract → match → save │
+                                      └───────────────┬─────────────────┘
+                                                      │
+                                      ┌───────────────▼─────────────────┐
+                                      │  SQLite / PostgreSQL            │
+                                      └─────────────────────────────────┘
+```
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for pipeline details.
+
+---
+
+## Tech stack
 
 | Layer | Technology |
 |-------|------------|
-| **Frontend** | React, TypeScript, Vite |
-| **Backend** | Python, FastAPI |
-| **Database** | PostgreSQL |
-| **AI / LLM** | OpenAI-compatible API (or provider-agnostic abstraction) |
-| **Document parsing** | PDF/DOCX extraction pipeline |
-| **Auth** | JWT-based authentication (OAuth optional, later phase) |
-| **Deployment** | Docker, environment-based configuration |
-
-Design principles: modular services, clear API contracts, observability hooks, and secrets managed via environment variables—not committed to source control.
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS 4 |
+| Backend | Python 3.11+, FastAPI, Pydantic |
+| Database | PostgreSQL (Docker) / SQLite (default local) |
+| NLP / matching | scikit-learn TF-IDF, curated skill catalog, rule-based recommendations |
+| Optional AI | OpenAI-compatible chat API for recommendation polish |
 
 ---
 
-## High-Level Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Client (Web UI)                         │
-│              Upload · Job Context · Results · History           │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │ HTTPS / REST
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      API Gateway / Backend                      │
-│   Auth · Resume CRUD · Analysis Jobs · Recommendations API      │
-└───────┬─────────────────┬─────────────────────┬─────────────────┘
-        │                 │                     │
-        ▼                 ▼                     ▼
-┌──────────────┐  ┌─────────────────┐  ┌─────────────────────────┐
-│  PostgreSQL  │  │ Document Parser │  │   AI Analysis Engine    │
-│ Users · Jobs │  │  PDF / DOCX →   │  │ Scoring · Skills · Gaps │
-│ Analyses     │  │  Structured JSON│  │  Recommendations        │
-└──────────────┘  └─────────────────┘  └─────────────────────────┘
-```
-
-**Request flow (planned):**
-
-1. User uploads a resume and optionally provides a job description.
-2. Backend stores the file, parses content, and persists a structured profile.
-3. Analysis engine runs scoring, skill extraction, and gap detection.
-4. Results are saved and returned to the client with explainable breakdowns.
-5. User can revisit history and compare iterations over time.
-
----
-
-## Folder Structure
+## Project structure
 
 ```
 AI Resume Analyzer/
-├── assets/          # Static assets (images, icons, brand files)
-├── backend/         # API, services, AI pipeline, business logic
-├── database/        # Migrations, seeds, schema definitions
-├── docs/            # Architecture notes, API specs, ADRs
-├── frontend/        # Web client application
+├── backend/           # FastAPI app, services, tests
+├── frontend/          # Next.js web client
+├── database/          # SQL schema reference
+├── docs/              # Architecture notes
+├── assets/            # Static assets
+├── docker-compose.yml
+├── .env.example
 └── README.md
 ```
 
-Additional root-level files (e.g. `docker-compose.yml`, `.env.example`, CI config) will be added as the project matures.
+---
+
+## AI / NLP pipeline
+
+1. **Extract** plain text from PDF (`pypdf`) or DOCX (`python-docx`).
+2. **Parse** sections (experience, education, skills) via heuristics; detect skills from a curated catalog.
+3. **Match** job description skills against resume skills; compute TF-IDF cosine similarity between full texts.
+4. **Score** — if JD skills are detected: `0.55 × skill_coverage + 0.45 × semantic_similarity`; otherwise semantic similarity only.
+5. **Recommend** — deterministic rules; optional OpenAI JSON recommendations when configured.
+
+Scores are **relative signals** for tailoring a resume, not guaranteed hiring outcomes.
 
 ---
 
-## Development Roadmap
+## Local setup
 
-| Phase | Focus | Outcomes |
-|-------|-------|----------|
-| **Phase 0 — Foundation** | Repo setup, README, env conventions, CI skeleton | Consistent dev workflow |
-| **Phase 1 — Core API** | Auth, resume upload, storage, basic parsing | End-to-end upload → structured data |
-| **Phase 2 — Analysis Engine** | ATS scoring, skill extraction, job-fit metrics | First meaningful analysis results |
-| **Phase 3 — Frontend MVP** | Upload UI, results dashboard, history | Usable product loop |
-| **Phase 4 — AI Recommendations** | Prompt pipeline, guardrails, explainability | Actionable improvement suggestions |
-| **Phase 5 — Production Hardening** | Tests, monitoring, rate limits, deployment | Production-ready release |
+### Prerequisites
 
-Milestone details and acceptance criteria will live in `docs/` as the project evolves.
+- Node.js 20+
+- Python 3.11+
+- (Optional) Docker Desktop for PostgreSQL stack
 
----
-
-## Installation
-
-> **Placeholder** — setup instructions will be added once the initial backend and frontend scaffolds are committed.
+### 1. Environment
 
 ```bash
-# Clone the repository
-git clone https://github.com/<your-org>/ai-resume-analyzer.git
-cd ai-resume-analyzer
-
-# Backend (coming soon)
-# cd backend && ...
-
-# Frontend (coming soon)
-# cd frontend && ...
-
-# Environment variables (coming soon)
-# cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
 ```
 
-**Prerequisites (planned):** Node.js 20+, Python 3.11+, PostgreSQL 15+, Docker (optional).
+### 2. Backend
+
+```bash
+cd backend
+python -m venv .venv
+# Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### 3. Frontend
+
+In a second terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) → **Get Started** or `/dashboard/analyze`.
+
+> **ERR_CONNECTION_REFUSED on :3000** means the Next.js dev server is not running. Start it with `npm run dev` from `frontend/`. The API runs separately on port **8000**.
 
 ---
 
-## Future Scope
+## Environment variables
 
-- **Multi-resume profiles** — versions for different role types (e.g. SWE vs PM)
-- **Bulk / recruiter mode** — analyze multiple candidates against one JD
-- **Integrations** — LinkedIn export, Greenhouse/Lever (API-dependent)
-- **Interview prep** — question sets derived from resume + JD gaps
-- **Market signals** — skill demand trends (requires curated data sources)
-- **Enterprise features** — teams, RBAC, audit logs, SSO
+| Variable | Where | Description | Default |
+|----------|-------|-------------|---------|
+| `DATABASE_URL` | backend | SQLAlchemy URL (SQLite or PostgreSQL) | `sqlite:///./data/resume_analyzer.db` |
+| `CORS_ORIGINS` | backend | Comma-separated frontend origin(s) | `http://localhost:3000,...` |
+| `DEBUG` | backend | When `false`, OpenAPI/Swagger docs are disabled | `false` |
+| `MAX_UPLOAD_BYTES` | backend | Upload limit | `5242880` (5 MB) |
+| `ALLOWED_EXTENSIONS` | backend | Resume types | `.pdf,.docx` |
+| `UPLOAD_DIR` | backend | Stored uploads | `./data/uploads` |
+| `OPENAI_API_KEY` | backend | Optional LLM recommendations (server only) | empty |
+| `NEXT_PUBLIC_API_URL` | frontend | Public API base URL (no secrets) | `http://localhost:8000` |
 
-Items above are exploratory and will be prioritized based on product validation and technical feasibility.
+---
+
+## Database
+
+- **Local dev:** SQLite file created automatically under `backend/data/` when `DATABASE_URL` uses SQLite.
+- **PostgreSQL:** Set `DATABASE_URL=postgresql+psycopg2://...` — tables are created on startup via SQLAlchemy (`init_db`). Reference DDL: `database/schema.sql`.
+- **Docker Compose:** Starts PostgreSQL 16 + API configured for Postgres (override with env vars; see `docker-compose.yml`).
+
+Optional PostgreSQL smoke test (requires a running Postgres instance):
+
+```bash
+# Example after: docker compose up -d db
+set POSTGRES_TEST_URL=postgresql+psycopg2://YOUR_USER:YOUR_PASSWORD@localhost:5432/resume_analyzer
+pytest backend/tests/test_postgres_optional.py -q
+```
+
+---
+
+## API overview
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/health` | Health check |
+| POST | `/api/v1/analyze` | Multipart: `resume` file + `job_description` form field |
+| GET | `/api/v1/analyze/history?limit=20` | Recent analyses |
+| GET | `/api/v1/analyze/{id}` | Analysis detail |
+
+---
+
+## Testing
+
+**Backend:**
+
+```bash
+cd backend
+.\.venv\Scripts\Activate.ps1   # if using venv
+pytest
+```
+
+**Frontend:**
+
+```bash
+cd frontend
+npm run lint
+npm run build
+```
+
+---
+
+## Production deployment requirements (not yet deployed)
+
+This repository is **deployment-ready in configuration** but has **no public live URL** until you host it.
+
+1. **Backend:** Set `DATABASE_URL` (managed PostgreSQL recommended), `CORS_ORIGINS` to your frontend URL(s), `UPLOAD_DIR`, `DEBUG=false`, optional `OPENAI_API_KEY`.
+2. **Frontend:** Set `NEXT_PUBLIC_API_URL` to the public API origin (HTTPS).
+3. **Docker Compose (local/staging):** `docker compose up --build` — override `CORS_ORIGINS`, `NEXT_PUBLIC_API_URL`, and `DATABASE_URL` via environment or `.env` file for non-localhost use.
+
+Do not hardcode production URLs in source; configure them at deploy time.
+
+---
+
+## Security notes
+
+- Do not commit API keys or database passwords (see `.gitignore`).
+- `OPENAI_API_KEY` stays on the backend only — never use `NEXT_PUBLIC_` for secrets.
+- Uploads are validated (type/size) and stored under `UPLOAD_DIR`; use object storage at scale.
+- API docs (`/docs`) are **disabled** when `DEBUG=false`.
+- No authentication — treat as a public demo until auth is added.
+
+---
+
+## Limitations
+
+- PDFs must contain selectable text (scanned images/OCR not included).
+- Profile parsing is heuristic; unusual resume layouts may parse partially.
+- Skill detection uses a curated catalog plus JD token matching — niche tools may be missed unless listed in text.
+- Match scores are explanatory metrics, not verified hiring predictions.
+
+---
+
+## Future improvements
+
+- User authentication and saved workspaces
+- OCR for scanned PDFs
+- Recruiter bulk upload mode
+- Richer embedding-based similarity
+- CI/CD and automated deployment to GitHub Pages/Vercel
+
+---
+
+## Screenshots
+
+<!-- Add screenshots of landing page, analyze flow, and results dashboard after deployment -->
 
 ---
 
 ## License
 
-This project is licensed under the **MIT License**. See [LICENSE](LICENSE) once added to the repository.
-
----
-
-## Contributing
-
-Contribution guidelines will be published in `docs/CONTRIBUTING.md` when the codebase is ready for external contributors.
-
----
-
-<p align="center">
-  Built for clarity, explainability, and real career outcomes—not vanity scores.
-</p>
+MIT — see [LICENSE](LICENSE).

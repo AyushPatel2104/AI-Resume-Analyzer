@@ -1,4 +1,5 @@
-import type { AnchorHTMLAttributes, ReactNode } from "react";
+import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { colors } from "@/constants/colors";
 import { radius } from "@/constants/radius";
@@ -10,21 +11,15 @@ import { cn } from "@/lib/utils";
 type SidebarNavigationItem = {
   label: string;
   href: string;
-  isActive?: boolean;
 };
 
 const navigationItems: SidebarNavigationItem[] = [
-  { label: "Overview", href: "#", isActive: true },
-  { label: "Resumes", href: "#" },
-  { label: "Analyses", href: "#" },
-  { label: "Insights", href: "#" },
-  { label: "Settings", href: "#" },
+  { label: "Overview", href: "/dashboard" },
+  { label: "New analysis", href: "/dashboard/analyze" },
+  { label: "Analyses", href: "/dashboard" },
 ];
 
-/**
- * Reusable dashboard sidebar with placeholder workspace and navigation links.
- */
-export function Sidebar() {
+export function Sidebar({ activePath = "/dashboard" }: { activePath?: string }) {
   return (
     <aside
       className="lg:sticky lg:top-0 lg:h-screen"
@@ -42,10 +37,10 @@ export function Sidebar() {
           padding: spacing[5],
         }}
       >
-        <a
+        <Link
           aria-label="AI Resume Analyzer dashboard"
           className="flex items-center gap-3"
-          href="#"
+          href="/"
           style={{ color: colors.surface.foreground }}
         >
           <span
@@ -70,17 +65,27 @@ export function Sidebar() {
           >
             Resume Analyzer
           </span>
-        </a>
+        </Link>
 
         <nav aria-label="Dashboard navigation">
           <ul className="flex flex-col" style={{ gap: spacing[1] }}>
-            {navigationItems.map((item) => (
-              <li key={item.label}>
-                <SidebarLink href={item.href} isActive={item.isActive}>
-                  {item.label}
-                </SidebarLink>
-              </li>
-            ))}
+            {navigationItems.map((item) => {
+              const isActive =
+                item.label === "Overview"
+                  ? activePath === "/dashboard"
+                  : item.label === "New analysis"
+                    ? activePath.startsWith("/dashboard/analyze")
+                    : item.label === "Analyses"
+                      ? activePath.startsWith("/dashboard/results")
+                      : activePath === item.href;
+              return (
+                <li key={item.label}>
+                  <SidebarLink href={item.href} isActive={isActive}>
+                    {item.label}
+                  </SidebarLink>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
@@ -113,7 +118,7 @@ export function Sidebar() {
               lineHeight: textStyles.caption.lineHeight,
             }}
           >
-            Placeholder workspace for saved resumes and analysis history.
+            Analyses are stored locally in your configured database when the API is running.
           </p>
         </section>
       </div>
@@ -124,17 +129,19 @@ export function Sidebar() {
 function SidebarLink({
   children,
   className,
+  href,
   isActive = false,
-  style,
-  ...props
-}: AnchorHTMLAttributes<HTMLAnchorElement> & {
+}: {
   children: ReactNode;
+  className?: string;
+  href: string;
   isActive?: boolean;
 }) {
   return (
-    <a
+    <Link
       aria-current={isActive ? "page" : undefined}
       className={cn("flex min-h-10 items-center px-3 transition-colors", className)}
+      href={href}
       style={{
         backgroundColor: isActive ? colors.brand.accentMuted : "transparent",
         borderRadius: radius.medium,
@@ -142,11 +149,9 @@ function SidebarLink({
         fontSize: textStyles.bodySmall.fontSize,
         fontWeight: isActive ? textStyles.label.fontWeight : textStyles.bodySmall.fontWeight,
         lineHeight: textStyles.bodySmall.lineHeight,
-        ...style,
       }}
-      {...props}
     >
       {children}
-    </a>
+    </Link>
   );
 }

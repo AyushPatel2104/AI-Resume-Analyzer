@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
 import { Container } from "@/components/common/Container";
@@ -14,14 +15,14 @@ type HeroAction = {
 };
 
 const heroActions: HeroAction[] = [
-  { label: "Analyze resume", href: "#", variant: "primary" },
-  { label: "View demo", href: "#", variant: "secondary" },
+  { label: "Analyze resume", href: "/dashboard/analyze", variant: "primary" },
+  { label: "View dashboard", href: "/dashboard", variant: "secondary" },
 ];
 
 const insightRows = [
-  { label: "Role alignment", value: "92%", tone: colors.semantic.success },
-  { label: "Keyword coverage", value: "84%", tone: colors.semantic.info },
-  { label: "Experience signal", value: "High", tone: colors.brand.accent },
+  { label: "Skill overlap", value: "Example", tone: colors.semantic.success },
+  { label: "Semantic fit", value: "Example", tone: colors.semantic.info },
+  { label: "Experience signal", value: "Example", tone: colors.brand.accent },
 ];
 
 const previewCards = [
@@ -110,31 +111,32 @@ function HeroButton({
   variant: HeroAction["variant"];
 }) {
   const isPrimary = variant === "primary";
+  const style: CSSProperties = {
+    backgroundColor: isPrimary ? colors.brand.DEFAULT : colors.surface.background,
+    border: `1px solid ${isPrimary ? colors.brand.DEFAULT : colors.surface.borderStrong}`,
+    borderRadius: radius.large,
+    boxShadow: isPrimary ? shadows.extraSmall : shadows.none,
+    color: isPrimary ? colors.brand.foreground : colors.surface.foreground,
+    fontSize: textStyles.label.fontSize,
+    fontWeight: textStyles.label.fontWeight,
+    lineHeight: textStyles.label.lineHeight,
+  };
 
   return (
-    <a
+    <Link
       className="inline-flex min-h-11 items-center justify-center px-5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2"
       href={href}
-      style={{
-        backgroundColor: isPrimary ? colors.brand.DEFAULT : colors.surface.background,
-        border: `1px solid ${isPrimary ? colors.brand.DEFAULT : colors.surface.borderStrong}`,
-        borderRadius: radius.large,
-        boxShadow: isPrimary ? shadows.extraSmall : shadows.none,
-        color: isPrimary ? colors.brand.foreground : colors.surface.foreground,
-        fontSize: textStyles.label.fontSize,
-        fontWeight: textStyles.label.fontWeight,
-        lineHeight: textStyles.label.lineHeight,
-      }}
+      style={style}
     >
       {children}
-    </a>
+    </Link>
   );
 }
 
 function ProductPreview() {
   return (
     <div
-      aria-label="Placeholder resume analysis preview"
+      aria-label="Illustrative example of the analysis dashboard — not live results or a measured benchmark"
       className="relative"
       role="img"
       style={{
@@ -165,17 +167,28 @@ function ProductPreview() {
           }}
         >
           <div>
-            <p style={eyebrowStyle}>Match score</p>
+            <p style={eyebrowStyle}>Example match score</p>
             <p
+              aria-hidden="true"
               style={{
-                color: colors.surface.foreground,
-                fontSize: fontSize["5xl"],
-                fontWeight: textStyles.display.fontWeight,
-                lineHeight: textStyles.display.lineHeight,
+                color: colors.surface.foregroundMuted,
+                fontSize: fontSize["3xl"],
+                fontWeight: textStyles.h2.fontWeight,
+                lineHeight: textStyles.h2.lineHeight,
                 marginTop: spacing[2],
               }}
             >
-              92
+              Illustration
+            </p>
+            <p
+              style={{
+                color: colors.surface.foregroundMuted,
+                fontSize: textStyles.caption.fontSize,
+                lineHeight: textStyles.caption.lineHeight,
+                marginTop: spacing[2],
+              }}
+            >
+              Sample UI only — run an analysis to see your real score.
             </p>
           </div>
           <div className="flex flex-col" style={{ gap: spacing[3] }}>

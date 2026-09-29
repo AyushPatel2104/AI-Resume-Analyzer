@@ -1,0 +1,34 @@
+from collections.abc import Generator
+from pathlib import Path
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+
+from app.config import get_settings
+
+settings = get_settings()
+
+connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
+
+engine = create_engine(settings.database_url, connect_args=connect_args, pool_pre_ping=True)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def init_db() -> None:
+    from app import models  # noqa: F401
+
+    if settings.database_url.startswith("sqlite"):
+        Path("./data").mkdir(parents=True, exist_ok=True)
+    Base.metadata.create_all(bind=engine)

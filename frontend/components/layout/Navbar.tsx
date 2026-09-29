@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 
 import { colors } from "@/constants/colors";
@@ -16,10 +17,9 @@ type NavigationItem = {
 };
 
 const primaryNavigation: NavigationItem[] = [
-  { label: "Product", href: "#" },
-  { label: "Solutions", href: "#" },
-  { label: "Resources", href: "#" },
-  { label: "Pricing", href: "#" },
+  { label: "Features", href: "/#features" },
+  { label: "How it works", href: "/#how-it-works" },
+  { label: "Dashboard", href: "/dashboard" },
 ];
 
 type NavbarActionProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
@@ -79,10 +79,10 @@ export function Navbar() {
           aria-label="Primary navigation"
           className="flex min-h-16 items-center justify-between gap-6"
         >
-          <a
+          <Link
             aria-label="AI Resume Analyzer home"
             className="flex items-center gap-3 font-semibold"
-            href="#"
+            href="/"
             style={{ color: colors.surface.foreground }}
           >
             <span
@@ -99,7 +99,7 @@ export function Navbar() {
               AI
             </span>
             <span className="hidden sm:inline">Resume Analyzer</span>
-          </a>
+          </Link>
 
           <ul className="hidden items-center gap-6 md:flex">
             {primaryNavigation.map((item) => (
@@ -121,10 +121,10 @@ export function Navbar() {
           </ul>
 
           <div className="flex items-center" style={{ gap: spacing[3] }}>
-            <NavbarAction className="hidden sm:inline-flex" href="#">
-              Sign In
+            <NavbarAction className="hidden sm:inline-flex" href="/dashboard">
+              Dashboard
             </NavbarAction>
-            <NavbarAction href="#" variant="primary">
+            <NavbarAction href="/dashboard/analyze" variant="primary">
               Get Started
             </NavbarAction>
           </div>

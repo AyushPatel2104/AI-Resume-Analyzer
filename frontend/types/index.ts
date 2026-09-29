@@ -1,2 +1,1 @@
-/** Placeholder — shared TypeScript types and interfaces. */
-export {};
+export type * from "./api";

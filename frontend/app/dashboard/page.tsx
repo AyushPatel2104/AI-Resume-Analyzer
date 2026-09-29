@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { ContentCard } from "@/components/dashboard/ContentCard";
 import {
   DashboardHeader,
@@ -10,131 +12,154 @@ import { colors } from "@/constants/colors";
 import { radius } from "@/constants/radius";
 import { spacing } from "@/constants/spacing";
 import { textStyles } from "@/constants/typography";
+import { checkApiHealth, fetchAnalysisHistory } from "@/services/api";
 
-const overviewStats = [
-  {
-    label: "Resume score",
-    value: "84",
-    description: "Placeholder overall quality score",
-    trend: "+8%",
-  },
-  {
-    label: "Role match",
-    value: "72%",
-    description: "Placeholder fit against target role",
-    trend: "+5%",
-  },
-  {
-    label: "Skill coverage",
-    value: "18/24",
-    description: "Placeholder required skills detected",
-  },
-  {
-    label: "Open insights",
-    value: "6",
-    description: "Placeholder recommendations to review",
-  },
-] as const;
+export default async function DashboardPage() {
+  const apiOnline = await checkApiHealth();
+  let history: Awaited<ReturnType<typeof fetchAnalysisHistory>> = [];
+  let historyError: string | null = null;
 
-const recentAnalyses = [
-  "Senior Product Designer resume",
-  "Frontend Architect resume",
-  "Data Analyst resume",
-] as const;
+  if (apiOnline) {
+    try {
+      history = await fetchAnalysisHistory(8);
+    } catch (err) {
+      historyError = err instanceof Error ? err.message : "Could not load history.";
+    }
+  }
 
-const recommendations = [
-  "Add measurable outcomes to recent experience bullets.",
-  "Clarify leadership scope in project descriptions.",
-  "Increase keyword coverage for the target role.",
-] as const;
+  const latest = history[0];
+  const avgScore =
+    history.length > 0
+      ? Math.round(history.reduce((sum, h) => sum + h.overall_score, 0) / history.length)
+      : null;
 
-/** Placeholder dashboard home page. */
-export default function DashboardPage() {
   return (
     <DashboardShell
       header={
         <DashboardHeader
           actions={
-            <>
-              <DashboardHeaderAction href="#">Review history</DashboardHeaderAction>
-              <DashboardHeaderAction href="#" variant="primary">
-                New analysis
-              </DashboardHeaderAction>
-            </>
+            <DashboardHeaderAction href="/dashboard/analyze" variant="primary">
+              New analysis
+            </DashboardHeaderAction>
           }
-          description="Placeholder dashboard overview for resume quality, role alignment, and career intelligence signals."
+          description="Track resume–job analyses, scores, and recommendations from your workspace."
           eyebrow="Dashboard"
           title="Resume intelligence overview"
         />
       }
-      sidebar={<Sidebar />}
+      sidebar={<Sidebar activePath="/dashboard" />}
     >
+      {!apiOnline ? (
+        <div
+          role="status"
+          style={{
+            backgroundColor: colors.semantic.warningMuted,
+            color: colors.semantic.warning,
+            borderRadius: radius.large,
+            padding: spacing[4],
+            fontSize: textStyles.bodySmall.fontSize,
+          }}
+        >
+          API offline — start the backend at{" "}
+          <code style={{ fontFamily: "monospace" }}>http://localhost:8000</code> to run analyses and
+          save history.
+        </div>
+      ) : null}
+
       <section aria-label="Dashboard summary metrics" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {overviewStats.map((stat) => (
-          <StatCard
-            description={stat.description}
-            key={stat.label}
-            label={stat.label}
-            trend={"trend" in stat ? stat.trend : undefined}
-            value={stat.value}
-          />
-        ))}
+        <StatCard
+          description={latest ? "Most recent analysis" : "Run your first analysis"}
+          label="Latest match score"
+          value={latest ? `${Math.round(latest.overall_score)}%` : "—"}
+        />
+        <StatCard
+          description="Across saved analyses"
+          label="Average score"
+          value={avgScore !== null ? `${avgScore}%` : "—"}
+        />
+        <StatCard
+          description="Stored in database"
+          label="Total analyses"
+          value={String(history.length)}
+        />
+        <StatCard
+          description="Backend connectivity"
+          label="API status"
+          value={apiOnline ? "Online" : "Offline"}
+        />
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <ContentCard
-          description="Placeholder list of recent analysis sessions."
-          title="Recent analyses"
-        >
-          <ul className="flex flex-col" style={{ gap: spacing[3] }}>
-            {recentAnalyses.map((analysis) => (
-              <li
-                className="flex items-center justify-between gap-4"
-                key={analysis}
-                style={{
-                  border: `1px solid ${colors.surface.border}`,
-                  borderRadius: radius.medium,
-                  padding: spacing[4],
-                }}
-              >
-                <span
+        <ContentCard description="Open a saved report or start a new match." title="Recent analyses">
+          {historyError ? (
+            <p style={{ color: colors.semantic.error, fontSize: textStyles.bodySmall.fontSize }}>
+              {historyError}
+            </p>
+          ) : history.length === 0 ? (
+            <p style={{ color: colors.surface.foregroundMuted, fontSize: textStyles.bodySmall.fontSize }}>
+              No analyses yet.{" "}
+              <Link href="/dashboard/analyze" style={{ color: colors.brand.accent }}>
+                Upload a resume
+              </Link>{" "}
+              to get started.
+            </p>
+          ) : (
+            <ul className="flex flex-col" style={{ gap: spacing[3] }}>
+              {history.map((analysis) => (
+                <li
+                  className="flex items-center justify-between gap-4"
+                  key={analysis.id}
                   style={{
-                    color: colors.surface.foreground,
-                    fontSize: textStyles.bodySmall.fontSize,
-                    lineHeight: textStyles.bodySmall.lineHeight,
+                    border: `1px solid ${colors.surface.border}`,
+                    borderRadius: radius.medium,
+                    padding: spacing[4],
                   }}
                 >
-                  {analysis}
-                </span>
-                <span
-                  style={{
-                    color: colors.surface.foregroundMuted,
-                    fontSize: textStyles.caption.fontSize,
-                    lineHeight: textStyles.caption.lineHeight,
-                  }}
-                >
-                  Placeholder
-                </span>
-              </li>
-            ))}
-          </ul>
+                  <Link
+                    href={`/dashboard/results/${analysis.id}`}
+                    style={{
+                      color: colors.surface.foreground,
+                      fontSize: textStyles.bodySmall.fontSize,
+                      lineHeight: textStyles.bodySmall.lineHeight,
+                    }}
+                  >
+                    {analysis.original_filename}
+                  </Link>
+                  <span
+                    style={{
+                      color: colors.brand.accent,
+                      fontSize: textStyles.label.fontSize,
+                      fontWeight: textStyles.label.fontWeight,
+                    }}
+                  >
+                    {Math.round(analysis.overall_score)}%
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </ContentCard>
 
         <ContentCard
-          description="Placeholder next actions generated from analysis signals."
-          title="Recommended actions"
+          description="End-to-end flow for recruiters and job seekers."
+          title="How it works"
         >
           <ol className="flex flex-col" style={{ gap: spacing[3] }}>
-            {recommendations.map((recommendation) => (
+            {[
+              "Upload PDF or DOCX resume",
+              "Paste the target job description",
+              "Review match score, skills, gaps, and recommendations",
+            ].map((step, index) => (
               <li
-                key={recommendation}
+                key={step}
                 style={{
                   color: colors.surface.foregroundMuted,
                   fontSize: textStyles.bodySmall.fontSize,
                   lineHeight: textStyles.bodySmall.lineHeight,
                 }}
               >
-                {recommendation}
+                <span style={{ color: colors.brand.accent, fontWeight: 600 }}>{index + 1}. </span>
+                {step}
               </li>
             ))}
           </ol>

@@ -30,6 +30,7 @@ const workflowSteps = [
 export function HowItWorks() {
   return (
     <section
+      id="how-it-works"
       aria-labelledby="how-it-works-title"
       style={{
         backgroundColor: colors.surface.backgroundSubtle,
